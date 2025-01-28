@@ -29,12 +29,131 @@
     <script src="passenger.js"></script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUHs9GkMFd5CC9HkwZdQRe8okW6WqA8K0&libraries=places&callback=initMap"></script>
     <script>
+        let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder, distanceService;
+
         function initMap() {
-            const mapOptions = {
-                center: { lat: -34.6083, lng: -58.3712 },  // Coordenadas para Buenos Aires, por ejemplo
+            // Coordenadas de Santo Tomé, Corrientes
+            const santoTome = { lat: -29.9961, lng: -59.2217 };
+
+            // Inicialización del mapa
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: santoTome,
                 zoom: 12,
-            };
-            const map = new google.maps.Map(document.getElementById('map'), mapOptions);
+            });
+
+            // Inicialización de los servicios de direcciones y distancia
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+            geocoder = new google.maps.Geocoder();
+            distanceService = new google.maps.DistanceMatrixService();
+
+            // Place Autocomplete para los campos de origen y destino
+            const inputOrigin = document.getElementById('origin');
+            const inputDestination = document.getElementById('destination');
+            const autocompleteOrigin = new google.maps.places.Autocomplete(inputOrigin);
+            const autocompleteDestination = new google.maps.places.Autocomplete(inputDestination);
+
+            autocompleteOrigin.setFields(['place_id', 'geometry']);
+            autocompleteDestination.setFields(['place_id', 'geometry']);
+
+            autocompleteOrigin.addListener('place_changed', () => {
+                const place = autocompleteOrigin.getPlace();
+                if (place.geometry) {
+                    updateOriginMarker(place.geometry.location);
+                }
+            });
+
+            autocompleteDestination.addListener('place_changed', () => {
+                const place = autocompleteDestination.getPlace();
+                if (place.geometry) {
+                    updateDestinationMarker(place.geometry.location);
+                }
+            });
+
+            // Obtener la ubicación actual del usuario
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const userLocation = new google.maps.LatLng(
+                        position.coords.latitude,
+                        position.coords.longitude
+                    );
+                    updateOriginMarker(userLocation);
+                    map.setCenter(userLocation);
+                });
+            }
+
+            // Función para actualizar el marcador de origen
+            function updateOriginMarker(location) {
+                if (originMarker) {
+                    originMarker.setPosition(location);
+                } else {
+                    originMarker = new google.maps.Marker({
+                        position: location,
+                        map: map,
+                        draggable: true,
+                        title: "Origen",
+                    });
+                    originMarker.addListener('dragend', () => {
+                        calculateRoute();
+                    });
+                }
+                calculateRoute();
+            }
+
+            // Función para actualizar el marcador de destino
+            function updateDestinationMarker(location) {
+                if (destinationMarker) {
+                    destinationMarker.setPosition(location);
+                } else {
+                    destinationMarker = new google.maps.Marker({
+                        position: location,
+                        map: map,
+                        title: "Destino",
+                    });
+                }
+                calculateRoute();
+            }
+
+            // Función para calcular la ruta y la distancia
+            function calculateRoute() {
+                if (originMarker && destinationMarker) {
+                    const request = {
+                        origin: originMarker.getPosition(),
+                        destination: destinationMarker.getPosition(),
+                        travelMode: google.maps.TravelMode.DRIVING,
+                    };
+                    directionsService.route(request, (result, status) => {
+                        if (status === google.maps.DirectionsStatus.OK) {
+                            directionsRenderer.setDirections(result);
+                            calculateDistanceAndFare(result);
+                        }
+                    });
+                }
+            }
+
+            // Calcular distancia y tarifa
+            function calculateDistanceAndFare(result) {
+                const distance = result.routes[0].legs[0].distance.text;
+                const duration = result.routes[0].legs[0].duration.text;
+                document.getElementById('distance').textContent = `Distancia: ${distance} (${duration})`;
+
+                // Aquí puedes agregar la lógica para calcular las tarifas basadas en la distancia
+                let fare = 0;
+                const vehicleType = document.getElementById('vehicleType').value;
+                if (vehicleType === 'auto') {
+                    fare = parseFloat(distance.replace(/[^\d.-]/g, '')) * 0.5;  // Precio por km para Auto
+                } else if (vehicleType === 'moto') {
+                    fare = parseFloat(distance.replace(/[^\d.-]/g, '')) * 0.3;  // Precio por km para Moto
+                }
+
+                document.getElementById('fare').textContent = `Tarifa estimada: $${fare.toFixed(2)}`;
+                document.getElementById('confirmButton').disabled = false;
+            }
+        }
+
+        function confirmRide() {
+            alert("Viaje confirmado!");
+            // Aquí puedes agregar la lógica para enviar la solicitud del viaje
         }
     </script>
 </body>
