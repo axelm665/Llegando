@@ -163,19 +163,21 @@
                 }
             }
 
-            // Calcular distancia y tarifa
+            // Calcular distancia y tarifas
             function calculateDistanceAndFare(result) {
                 const distance = result.routes[0].legs[0].distance.text;
                 const duration = result.routes[0].legs[0].duration.text;
                 document.getElementById('distance').textContent = `Distancia: ${distance} (${duration})`;
 
-                // Aquí puedes agregar la lógica para calcular las tarifas basadas en la distancia
+                // Calcular la tarifa dependiendo del vehículo seleccionado
                 let fare = 0;
                 const vehicleType = document.getElementById('vehicleType').value;
+                const distanceInKm = parseFloat(distance.replace(/[^\d.-]/g, ''));
+
                 if (vehicleType === 'auto') {
-                    fare = parseFloat(distance.replace(/[^\d.-]/g, '')) * 0.5;  // Precio por km para Auto
+                    fare = distanceInKm * 0.5;  // Precio por km para Auto
                 } else if (vehicleType === 'moto') {
-                    fare = parseFloat(distance.replace(/[^\d.-]/g, '')) * 0.3;  // Precio por km para Moto
+                    fare = distanceInKm * 0.3;  // Precio por km para Moto
                 }
 
                 document.getElementById('fare').textContent = `Tarifa estimada: $${fare.toFixed(2)}`;
