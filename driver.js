@@ -1,36 +1,43 @@
-let driverStatus = false;
+const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
+let intervalId = null;
 
-// Función para inicializar el mapa
-function initMap() {
-  const map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: -34.397, lng: 150.644 },
-    zoom: 8,
-  });
+function setDriverStatus(status) {
+    const driverId = document.getElementById('driverId').value;
+    if (!driverId) {
+        alert("Ingrese su ID de conductor");
+        return;
+    }
+
+    sendStatusUpdate(driverId, status);
+
+    if (status === "Activo") {
+        intervalId = setInterval(() => sendLocation(driverId), 60000);
+    } else {
+        clearInterval(intervalId);
+    }
 }
 
-// Actualizar estado del conductor
-document.getElementById("toggle-status").addEventListener("click", () => {
-  driverStatus = !driverStatus;
-  const statusButton = document.getElementById("toggle-status");
-  statusButton.textContent = driverStatus ? "No Disponible" : "Estoy Disponible";
-  fetch("/driver/status", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: driverStatus }),
-  })
-    .then((response) => response.json())
-    .then((data) => console.log(data));
-});
+function sendStatusUpdate(driverId, status) {
+    fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverId, status })
+    });
+}
 
-// Solicitar viaje
-document.getElementById("request-ride").addEventListener("click", () => {
-  const pickup = document.getElementById("pickup").value;
-  const destination = document.getElementById("destination").value;
-  fetch("/passenger/request-ride", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pickup, destination }),
-  })
-    .then((response) => response.json())
-    .then((data) => console.log(data));
-});
+function sendLocation(driverId) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+            fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    driverId,
+                    status: "Activo",
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                })
+            });
+        });
+    }
+}
