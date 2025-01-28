@@ -43,7 +43,10 @@
 
             // Inicialización de los servicios de direcciones y distancia
             directionsService = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true, // Ocultar los marcadores de origen y destino generados por DirectionsRenderer
+            });
             geocoder = new google.maps.Geocoder();
             distanceService = new google.maps.DistanceMatrixService();
 
