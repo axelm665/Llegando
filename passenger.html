@@ -1,27 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitar Viaje</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Solicitar Viaje</h1>
-        <input id="origin" type="text" placeholder="Origen">
-        <input id="destination" type="text" placeholder="Destino">
-        <div id="map"></div>
-        <p id="distance"></p>
-        <p id="fare"></p>
-        <select id="vehicleType">
-            <option value="auto">Auto</option>
-            <option value="moto">Moto</option>
-        </select>
-        <button id="confirmButton" disabled onclick="confirmRide()">Confirmar Viaje</button>
-    </div>
-    <script src="passenger.js"></script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD_KYnfmIJtkZTTZm4AEzUCcsBNn77iDfU&libraries=places&callback=initMap"></script>
-</body>
-</html>
-
+<script async defer 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD_KYnfmIJtkZTTZm4AEzUCcsBNn77iDfU&libraries=places&callback=initMap" 
+    onerror="alert('Error al cargar Google Maps. Verifica tu API Key')">
+</script>
