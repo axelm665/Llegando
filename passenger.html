@@ -53,13 +53,14 @@
             const autocompleteOrigin = new google.maps.places.Autocomplete(inputOrigin);
             const autocompleteDestination = new google.maps.places.Autocomplete(inputDestination);
 
-            autocompleteOrigin.setFields(['place_id', 'geometry']);
-            autocompleteDestination.setFields(['place_id', 'geometry']);
+            autocompleteOrigin.setFields(['place_id', 'geometry', 'formatted_address']);
+            autocompleteDestination.setFields(['place_id', 'geometry', 'formatted_address']);
 
             autocompleteOrigin.addListener('place_changed', () => {
                 const place = autocompleteOrigin.getPlace();
                 if (place.geometry) {
                     updateOriginMarker(place.geometry.location);
+                    map.setCenter(place.geometry.location);  // Centrar el mapa en el lugar seleccionado
                 }
             });
 
@@ -67,6 +68,7 @@
                 const place = autocompleteDestination.getPlace();
                 if (place.geometry) {
                     updateDestinationMarker(place.geometry.location);
+                    map.setCenter(place.geometry.location);  // Centrar el mapa en el lugar seleccionado
                 }
             });
 
@@ -94,9 +96,11 @@
                         title: "Origen",
                     });
                     originMarker.addListener('dragend', () => {
+                        updateAutocompleteAddress('origin', originMarker.getPosition());
                         calculateRoute();
                     });
                 }
+                updateAutocompleteAddress('origin', location);
                 calculateRoute();
             }
 
@@ -112,20 +116,35 @@
                         title: "Destino",
                     });
                     destinationMarker.addListener('dragend', () => {
+                        updateAutocompleteAddress('destination', destinationMarker.getPosition());
                         calculateRoute();
                     });
                 }
+                updateAutocompleteAddress('destination', location);
                 calculateRoute();
             }
 
             // Permitir que el usuario haga clic en el mapa para establecer el destino
             map.addListener('click', function(event) {
-                if (destinationMarker) {
-                    destinationMarker.setPosition(event.latLng);
-                } else {
+                if (!destinationMarker) {
                     updateDestinationMarker(event.latLng);
+                } else {
+                    destinationMarker.setPosition(event.latLng);
                 }
             });
+
+            // Función para actualizar la dirección en los campos de autocomplete
+            function updateAutocompleteAddress(type, location) {
+                geocoder.geocode({ location: location }, (results, status) => {
+                    if (status === google.maps.GeocoderStatus.OK && results[0]) {
+                        if (type === 'origin') {
+                            document.getElementById('origin').value = results[0].formatted_address;
+                        } else if (type === 'destination') {
+                            document.getElementById('destination').value = results[0].formatted_address;
+                        }
+                    }
+                });
+            }
 
             // Función para calcular la ruta y la distancia
             function calculateRoute() {
