@@ -108,11 +108,24 @@
                     destinationMarker = new google.maps.Marker({
                         position: location,
                         map: map,
+                        draggable: true,
                         title: "Destino",
+                    });
+                    destinationMarker.addListener('dragend', () => {
+                        calculateRoute();
                     });
                 }
                 calculateRoute();
             }
+
+            // Permitir que el usuario haga clic en el mapa para establecer el destino
+            map.addListener('click', function(event) {
+                if (destinationMarker) {
+                    destinationMarker.setPosition(event.latLng);
+                } else {
+                    updateDestinationMarker(event.latLng);
+                }
+            });
 
             // Función para calcular la ruta y la distancia
             function calculateRoute() {
