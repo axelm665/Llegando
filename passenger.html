@@ -8,7 +8,7 @@
     <style>
         #map {
             width: 100%;
-            height: 400px;  /* Ajusta la altura del mapa como desees */
+            height: 400px;
         }
     </style>
 </head>
@@ -19,38 +19,29 @@
         <input id="destination" type="text" placeholder="Destino">
         <div id="map"></div>
         <p id="distance"></p>
-        <p id="fare"></p>
-        <select id="vehicleType">
-            <option value="auto">Auto</option>
-            <option value="moto">Moto</option>
-        </select>
+        <p id="fareAuto"></p>
+        <p id="fareMoto"></p>
         <button id="confirmButton" disabled onclick="confirmRide()">Confirmar Viaje</button>
     </div>
-    <script src="passenger.js"></script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUHs9GkMFd5CC9HkwZdQRe8okW6WqA8K0&libraries=places&callback=initMap"></script>
     <script>
-        let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder, distanceService;
+        let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder;
 
         function initMap() {
-            // Coordenadas de Santo Tomé, Corrientes
             const santoTome = { lat: -29.9961, lng: -59.2217 };
 
-            // Inicialización del mapa
             map = new google.maps.Map(document.getElementById('map'), {
                 center: santoTome,
                 zoom: 12,
             });
 
-            // Inicialización de los servicios de direcciones y distancia
             directionsService = new google.maps.DirectionsService();
             directionsRenderer = new google.maps.DirectionsRenderer({
                 map: map,
-                suppressMarkers: true, // Ocultar los marcadores de origen y destino generados por DirectionsRenderer
+                suppressMarkers: true,
             });
             geocoder = new google.maps.Geocoder();
-            distanceService = new google.maps.DistanceMatrixService();
 
-            // Place Autocomplete para los campos de origen y destino
             const inputOrigin = document.getElementById('origin');
             const inputDestination = document.getElementById('destination');
             const autocompleteOrigin = new google.maps.places.Autocomplete(inputOrigin);
@@ -63,7 +54,7 @@
                 const place = autocompleteOrigin.getPlace();
                 if (place.geometry) {
                     updateOriginMarker(place.geometry.location);
-                    map.setCenter(place.geometry.location);  // Centrar el mapa en el lugar seleccionado
+                    map.setCenter(place.geometry.location);
                 }
             });
 
@@ -71,11 +62,10 @@
                 const place = autocompleteDestination.getPlace();
                 if (place.geometry) {
                     updateDestinationMarker(place.geometry.location);
-                    map.setCenter(place.geometry.location);  // Centrar el mapa en el lugar seleccionado
+                    map.setCenter(place.geometry.location);
                 }
             });
 
-            // Obtener la ubicación actual del usuario
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((position) => {
                     const userLocation = new google.maps.LatLng(
@@ -87,7 +77,6 @@
                 });
             }
 
-            // Función para actualizar el marcador de origen
             function updateOriginMarker(location) {
                 if (originMarker) {
                     originMarker.setPosition(location);
@@ -107,7 +96,6 @@
                 calculateRoute();
             }
 
-            // Función para actualizar el marcador de destino
             function updateDestinationMarker(location) {
                 if (destinationMarker) {
                     destinationMarker.setPosition(location);
@@ -127,7 +115,6 @@
                 calculateRoute();
             }
 
-            // Permitir que el usuario haga clic en el mapa para establecer el destino
             map.addListener('click', function(event) {
                 if (!destinationMarker) {
                     updateDestinationMarker(event.latLng);
@@ -136,7 +123,6 @@
                 }
             });
 
-            // Función para actualizar la dirección en los campos de autocomplete
             function updateAutocompleteAddress(type, location) {
                 geocoder.geocode({ location: location }, (results, status) => {
                     if (status === google.maps.GeocoderStatus.OK && results[0]) {
@@ -149,7 +135,6 @@
                 });
             }
 
-            // Función para calcular la ruta y la distancia
             function calculateRoute() {
                 if (originMarker && destinationMarker) {
                     const request = {
@@ -166,31 +151,25 @@
                 }
             }
 
-            // Calcular distancia y tarifas
             function calculateDistanceAndFare(result) {
                 const distance = result.routes[0].legs[0].distance.text;
                 const duration = result.routes[0].legs[0].duration.text;
                 document.getElementById('distance').textContent = `Distancia: ${distance} (${duration})`;
 
-                // Calcular la tarifa dependiendo del vehículo seleccionado
-                let fare = 0;
-                const vehicleType = document.getElementById('vehicleType').value;
                 const distanceInKm = parseFloat(distance.replace(/[^\d.-]/g, ''));
 
-                if (vehicleType === 'auto') {
-                    fare = distanceInKm * 0.5;  // Precio por km para Auto
-                } else if (vehicleType === 'moto') {
-                    fare = distanceInKm * 0.3;  // Precio por km para Moto
-                }
+                const fareAuto = distanceInKm * 1000;
+                const fareMoto = distanceInKm * 500;
 
-                document.getElementById('fare').textContent = `Tarifa estimada: $${fare.toFixed(2)}`;
+                document.getElementById('fareAuto').textContent = `Tarifa Auto: $${fareAuto.toFixed(2)}`;
+                document.getElementById('fareMoto').textContent = `Tarifa Moto: $${fareMoto.toFixed(2)}`;
+                
                 document.getElementById('confirmButton').disabled = false;
             }
         }
 
         function confirmRide() {
             alert("Viaje confirmado!");
-            // Aquí puedes agregar la lógica para enviar la solicitud del viaje
         }
     </script>
 </body>
