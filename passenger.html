@@ -23,7 +23,9 @@
         <p id="fareMoto"></p>
         <button id="confirmButton" disabled onclick="confirmRide()">Confirmar Viaje</button>
     </div>
+    
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUHs9GkMFd5CC9HkwZdQRe8okW6WqA8K0&libraries=places&callback=initMap"></script>
+    
     <script>
         let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder;
 
@@ -51,7 +53,6 @@
                 const place = autocompleteOrigin.getPlace();
                 if (place.geometry) {
                     updateMarker('origin', place.geometry.location);
-                    map.setCenter(place.geometry.location);
                 }
             });
 
@@ -59,7 +60,6 @@
                 const place = autocompleteDestination.getPlace();
                 if (place.geometry) {
                     updateMarker('destination', place.geometry.location);
-                    map.setCenter(place.geometry.location);
                 }
             });
 
@@ -77,12 +77,7 @@
             function updateMarker(type, location) {
                 if (type === 'origin') {
                     if (!originMarker) {
-                        originMarker = new google.maps.Marker({
-                            position: location,
-                            map: map,
-                            draggable: true,
-                            title: "Origen",
-                        });
+                        originMarker = createMarker(location, "Origen");
                         originMarker.addListener('dragend', () => {
                             updateAutocompleteAddress('origin', originMarker.getPosition());
                             calculateRoute();
@@ -93,12 +88,7 @@
                     updateAutocompleteAddress('origin', location);
                 } else {
                     if (!destinationMarker) {
-                        destinationMarker = new google.maps.Marker({
-                            position: location,
-                            map: map,
-                            draggable: true,
-                            title: "Destino",
-                        });
+                        destinationMarker = createMarker(location, "Destino");
                         destinationMarker.addListener('dragend', () => {
                             updateAutocompleteAddress('destination', destinationMarker.getPosition());
                             calculateRoute();
@@ -109,6 +99,15 @@
                     updateAutocompleteAddress('destination', location);
                 }
                 calculateRoute();
+            }
+
+            function createMarker(position, title) {
+                return new google.maps.Marker({
+                    position,
+                    map,
+                    draggable: true,
+                    title,
+                });
             }
 
             function updateAutocompleteAddress(type, location) {
