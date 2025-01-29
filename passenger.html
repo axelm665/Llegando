@@ -21,13 +21,19 @@
         <p id="distance"></p>
         <p id="fareAuto"></p>
         <p id="fareMoto"></p>
+        <select id="vehicleType">
+            <option value="auto">Auto</option>
+            <option value="moto">Moto</option>
+        </select>
         <button id="confirmButton" disabled onclick="confirmRide()">Confirmar Viaje</button>
     </div>
+    
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUHs9GkMFd5CC9HkwZdQRe8okW6WqA8K0&libraries=places&callback=initMap"></script>
+    
     <script>
         let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder;
 
-        function initMap() {
+        window.initMap = function() {  
             const santoTome = { lat: -29.9961, lng: -59.2217 };
 
             map = new google.maps.Map(document.getElementById('map'), {
@@ -47,13 +53,10 @@
             const autocompleteOrigin = new google.maps.places.Autocomplete(inputOrigin);
             const autocompleteDestination = new google.maps.places.Autocomplete(inputDestination);
 
-            autocompleteOrigin.setFields(['place_id', 'geometry', 'formatted_address']);
-            autocompleteDestination.setFields(['place_id', 'geometry', 'formatted_address']);
-
             autocompleteOrigin.addListener('place_changed', () => {
                 const place = autocompleteOrigin.getPlace();
                 if (place.geometry) {
-                    updateOriginMarker(place.geometry.location);
+                    updateMarker('origin', place.geometry.location);
                     map.setCenter(place.geometry.location);
                 }
             });
@@ -61,7 +64,7 @@
             autocompleteDestination.addListener('place_changed', () => {
                 const place = autocompleteDestination.getPlace();
                 if (place.geometry) {
-                    updateDestinationMarker(place.geometry.location);
+                    updateMarker('destination', place.geometry.location);
                     map.setCenter(place.geometry.location);
                 }
             });
@@ -72,63 +75,54 @@
                         position.coords.latitude,
                         position.coords.longitude
                     );
-                    updateOriginMarker(userLocation);
+                    updateMarker('origin', userLocation);
                     map.setCenter(userLocation);
                 });
             }
 
-            function updateOriginMarker(location) {
-                if (originMarker) {
-                    originMarker.setPosition(location);
+            function updateMarker(type, location) {
+                if (type === 'origin') {
+                    if (!originMarker) {
+                        originMarker = new google.maps.Marker({
+                            position: location,
+                            map: map,
+                            draggable: true,
+                            title: "Origen",
+                        });
+                        originMarker.addListener('dragend', () => {
+                            updateAutocompleteAddress('origin', originMarker.getPosition());
+                            calculateRoute();
+                        });
+                    } else {
+                        originMarker.setPosition(location);
+                    }
+                    updateAutocompleteAddress('origin', location);
                 } else {
-                    originMarker = new google.maps.Marker({
-                        position: location,
-                        map: map,
-                        draggable: true,
-                        title: "Origen",
-                    });
-                    originMarker.addListener('dragend', () => {
-                        updateAutocompleteAddress('origin', originMarker.getPosition());
-                        calculateRoute();
-                    });
+                    if (!destinationMarker) {
+                        destinationMarker = new google.maps.Marker({
+                            position: location,
+                            map: map,
+                            draggable: true,
+                            title: "Destino",
+                        });
+                        destinationMarker.addListener('dragend', () => {
+                            updateAutocompleteAddress('destination', destinationMarker.getPosition());
+                            calculateRoute();
+                        });
+                    } else {
+                        destinationMarker.setPosition(location);
+                    }
+                    updateAutocompleteAddress('destination', location);
                 }
-                updateAutocompleteAddress('origin', location);
                 calculateRoute();
             }
-
-            function updateDestinationMarker(location) {
-                if (destinationMarker) {
-                    destinationMarker.setPosition(location);
-                } else {
-                    destinationMarker = new google.maps.Marker({
-                        position: location,
-                        map: map,
-                        draggable: true,
-                        title: "Destino",
-                    });
-                    destinationMarker.addListener('dragend', () => {
-                        updateAutocompleteAddress('destination', destinationMarker.getPosition());
-                        calculateRoute();
-                    });
-                }
-                updateAutocompleteAddress('destination', location);
-                calculateRoute();
-            }
-
-            map.addListener('click', function(event) {
-                if (!destinationMarker) {
-                    updateDestinationMarker(event.latLng);
-                } else {
-                    destinationMarker.setPosition(event.latLng);
-                }
-            });
 
             function updateAutocompleteAddress(type, location) {
                 geocoder.geocode({ location: location }, (results, status) => {
                     if (status === google.maps.GeocoderStatus.OK && results[0]) {
                         if (type === 'origin') {
                             document.getElementById('origin').value = results[0].formatted_address;
-                        } else if (type === 'destination') {
+                        } else {
                             document.getElementById('destination').value = results[0].formatted_address;
                         }
                     }
@@ -166,10 +160,27 @@
                 
                 document.getElementById('confirmButton').disabled = false;
             }
-        }
+
+            map.addListener('click', function(event) {
+                if (!originMarker) {
+                    updateMarker('origin', event.latLng);
+                } else if (!destinationMarker) {
+                    updateMarker('destination', event.latLng);
+                } else {
+                    destinationMarker.setPosition(event.latLng);
+                    updateAutocompleteAddress('destination', event.latLng);
+                    calculateRoute();
+                }
+            });
+        };
 
         function confirmRide() {
-            alert("Viaje confirmado!");
+            const vehicleType = document.getElementById('vehicleType').value;
+            const fare = vehicleType === "auto" 
+                ? document.getElementById('fareAuto').textContent 
+                : document.getElementById('fareMoto').textContent;
+            
+            alert(`Viaje confirmado en ${vehicleType.toUpperCase()}.\n${fare}`);
         }
     </script>
 </body>
