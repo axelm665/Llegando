@@ -21,13 +21,19 @@
         <p id="distance"></p>
         <p id="fareAuto"></p>
         <p id="fareMoto"></p>
+        <select id="vehicleType">
+            <option value="auto">Auto</option>
+            <option value="moto">Moto</option>
+        </select>
         <button id="confirmButton" disabled onclick="confirmRide()">Confirmar Viaje</button>
     </div>
+    
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCUHs9GkMFd5CC9HkwZdQRe8okW6WqA8K0&libraries=places&callback=initMap"></script>
+    
     <script>
         let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder;
 
-        function initMap() {
+        window.initMap = function() {  
             const santoTome = { lat: -29.9961, lng: -59.2217 };
 
             map = new google.maps.Map(document.getElementById('map'), {
@@ -166,10 +172,15 @@
                     calculateRoute();
                 }
             });
-        }
+        };
 
         function confirmRide() {
-            alert("Viaje confirmado!");
+            const vehicleType = document.getElementById('vehicleType').value;
+            const fare = vehicleType === "auto" 
+                ? document.getElementById('fareAuto').textContent 
+                : document.getElementById('fareMoto').textContent;
+            
+            alert(`Viaje confirmado en ${vehicleType.toUpperCase()}.\n${fare}`);
         }
     </script>
 </body>
