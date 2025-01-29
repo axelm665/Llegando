@@ -17,10 +17,16 @@
         <h1>Solicitar Viaje</h1>
         <input id="origin" type="text" placeholder="Origen">
         <input id="destination" type="text" placeholder="Destino">
+
+        <label for="vehicle">Seleccionar vehículo:</label>
+        <select id="vehicle">
+            <option value="auto">Auto</option>
+            <option value="moto">Moto</option>
+        </select>
+
         <div id="map"></div>
         <p id="distance"></p>
-        <p id="fareAuto"></p>
-        <p id="fareMoto"></p>
+        <p id="fare"></p>
         <button id="confirmButton" disabled onclick="confirmRide()">Confirmar Viaje</button>
     </div>
     
@@ -28,6 +34,7 @@
     
     <script>
         let map, originMarker, destinationMarker, directionsService, directionsRenderer, geocoder;
+        const vehicleRates = { auto: 1000, moto: 500 }; // Tarifa por km
 
         function initMap() {
             const santoTome = { lat: -29.9961, lng: -59.2217 };
@@ -77,7 +84,7 @@
             function updateMarker(type, location) {
                 if (type === 'origin') {
                     if (!originMarker) {
-                        originMarker = createMarker(location, "Origen");
+                        originMarker = createMarker(location, "Origen", "http://maps.google.com/mapfiles/ms/icons/blue-dot.png");
                         originMarker.addListener('dragend', () => {
                             updateAutocompleteAddress('origin', originMarker.getPosition());
                             calculateRoute();
@@ -88,7 +95,7 @@
                     updateAutocompleteAddress('origin', location);
                 } else {
                     if (!destinationMarker) {
-                        destinationMarker = createMarker(location, "Destino");
+                        destinationMarker = createMarker(location, "Destino", "http://maps.google.com/mapfiles/ms/icons/red-dot.png");
                         destinationMarker.addListener('dragend', () => {
                             updateAutocompleteAddress('destination', destinationMarker.getPosition());
                             calculateRoute();
@@ -101,12 +108,13 @@
                 calculateRoute();
             }
 
-            function createMarker(position, title) {
+            function createMarker(position, title, iconUrl) {
                 return new google.maps.Marker({
                     position,
                     map,
                     draggable: true,
                     title,
+                    icon: { url: iconUrl }
                 });
             }
 
@@ -144,13 +152,10 @@
                 document.getElementById('distance').textContent = `Distancia: ${distance} (${duration})`;
 
                 const distanceInKm = parseFloat(distance.replace(/[^\d.-]/g, ''));
+                const selectedVehicle = document.getElementById('vehicle').value;
+                const fare = distanceInKm * vehicleRates[selectedVehicle];
 
-                const fareAuto = distanceInKm * 1000;
-                const fareMoto = distanceInKm * 500;
-
-                document.getElementById('fareAuto').textContent = `Tarifa Auto: $${fareAuto.toFixed(2)}`;
-                document.getElementById('fareMoto').textContent = `Tarifa Moto: $${fareMoto.toFixed(2)}`;
-                
+                document.getElementById('fare').textContent = `Tarifa ${selectedVehicle.charAt(0).toUpperCase() + selectedVehicle.slice(1)}: $${fare.toFixed(2)}`;
                 document.getElementById('confirmButton').disabled = false;
             }
 
@@ -162,6 +167,12 @@
                 } else {
                     destinationMarker.setPosition(event.latLng);
                     updateAutocompleteAddress('destination', event.latLng);
+                    calculateRoute();
+                }
+            });
+
+            document.getElementById('vehicle').addEventListener('change', () => {
+                if (originMarker && destinationMarker) {
                     calculateRoute();
                 }
             });
