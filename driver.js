@@ -1,16 +1,6 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
 let currentStatus = "Inactivo";
-
-// Registrar el Service Worker
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')  // Asegúrate de que esta ruta sea correcta
-        .then(registration => {
-            console.log('Service Worker registrado con éxito:', registration);
-        })
-        .catch(error => {
-            console.log('Error al registrar el Service Worker:', error);
-        });
-}
+let locationInterval = null;
 
 function setDriverStatus(status) {
     const driverId = document.getElementById('driverId').value;
@@ -36,7 +26,13 @@ function setDriverStatus(status) {
     sendStatusUpdate(driverId, status);
 
     if (status === "Activo") {
-        sendLocation(driverId);
+        // Activar intervalo de ubicación
+        if (locationInterval) {
+            clearInterval(locationInterval);
+        }
+        locationInterval = setInterval(() => sendLocation(driverId), 30000); // Cada 30 segundos
+    } else {
+        clearInterval(locationInterval);  // Detener el intervalo si el estado no es activo
     }
 }
 
@@ -50,19 +46,17 @@ function sendStatusUpdate(driverId, status) {
 
 function sendLocation(driverId) {
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(position => {
-            // Guardamos la ubicación en la cola para enviarla cuando la red esté disponible
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.active.postMessage({
-                        type: 'send-location',
-                        driverId,
-                        status: currentStatus,
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    });
-                });
-            }
+        navigator.geolocation.getCurrentPosition(position => {
+            fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    driverId,
+                    status: currentStatus,
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                })
+            });
         }, (error) => {
             console.error("Error al obtener la ubicación: ", error);
         }, {
@@ -70,8 +64,6 @@ function sendLocation(driverId) {
             timeout: 30000,
             maximumAge: 60000
         });
-    } else {
-        console.log("Geolocalización no soportada en este navegador");
     }
 }
 
