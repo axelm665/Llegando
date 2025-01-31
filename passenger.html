@@ -16,11 +16,25 @@
             gap: 10px;
             margin-bottom: 10px;
         }
+        #origin, #destination {
+            border: 2px solid;
+            padding-right: 30px; /* espacio para el botón X */
+        }
         #origin {
-            border: 2px solid blue;
+            border-color: blue;
         }
         #destination {
-            border: 2px solid red;
+            border-color: red;
+        }
+        .input-container input {
+            position: relative;
+        }
+        .clear-button {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
         }
         .bottom-container {
             display: flex;
@@ -34,8 +48,14 @@
     <div class="container">
         <h1>Solicitar Viaje</h1>
         <div class="input-container">
-            <input id="origin" type="text" placeholder="🔵 Origen">
-            <input id="destination" type="text" placeholder="🔴 Destino">
+            <div class="origin-container">
+                <input id="origin" type="text" placeholder="🔵 Origen">
+                <span id="clearOrigin" class="clear-button" onclick="clearLocation('origin')">X</span>
+            </div>
+            <div class="destination-container">
+                <input id="destination" type="text" placeholder="🔴 Destino">
+                <span id="clearDestination" class="clear-button" onclick="clearLocation('destination')">X</span>
+            </div>
         </div>
 
         <div id="map"></div>
@@ -203,6 +223,23 @@
                     calculateRoute();
                 }
             });
+        }
+
+        function clearLocation(type) {
+            if (type === 'origin') {
+                document.getElementById('origin').value = '';
+                if (originMarker) {
+                    originMarker.setMap(null);
+                    originMarker = null;
+                }
+            } else if (type === 'destination') {
+                document.getElementById('destination').value = '';
+                if (destinationMarker) {
+                    destinationMarker.setMap(null);
+                    destinationMarker = null;
+                }
+            }
+            document.getElementById('confirmButton').disabled = true;
         }
 
         function confirmRide() {
