@@ -1,5 +1,6 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
 let currentStatus = "Inactivo";
+let locationWorker = null;
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
@@ -17,15 +18,17 @@ function setDriverStatus(status) {
     if (status === "Activo") {
         document.getElementById('activeBtn').disabled = true;
         document.getElementById('inactiveBtn').disabled = false;
-        trackLocation(driverId);
+        startBackgroundTracking(driverId);
     }
     if (status === "Inactivo") {
         document.getElementById('inactiveBtn').disabled = true;
         document.getElementById('activeBtn').disabled = false;
         document.getElementById('tripEndBtn').disabled = true;
+        stopBackgroundTracking();
     }
     if (status === "Viaje Finalizado") {
         status = "Inactivo";
+        stopBackgroundTracking();
     }
 
     updateStatus(status);
@@ -40,11 +43,18 @@ function sendStatusUpdate(driverId, status) {
     });
 }
 
-function trackLocation(driverId) {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.sync.register('sendLocation');
-        });
+function startBackgroundTracking(driverId) {
+    if (window.Worker) {
+        locationWorker = new Worker('location-worker.js');
+        locationWorker.postMessage({ command: "startTracking", driverId: driverId });
+    }
+}
+
+function stopBackgroundTracking() {
+    if (locationWorker) {
+        locationWorker.postMessage({ command: "stopTracking" });
+        locationWorker.terminate();
+        locationWorker = null;
     }
 }
 
