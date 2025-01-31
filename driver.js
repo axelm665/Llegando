@@ -98,5 +98,3 @@ function assignTrip(driverId) {
         setDriverStatus("En viaje");
     }
 }
-
-
