@@ -1,8 +1,7 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
-let intervalId = null;
 let currentStatus = "Inactivo";
 
-// Registrar el Service Worker si el navegador lo soporta
+// Registrar el Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js')
         .then(registration => {
@@ -37,9 +36,7 @@ function setDriverStatus(status) {
     sendStatusUpdate(driverId, status);
 
     if (status === "Activo") {
-        intervalId = setInterval(() => sendLocation(driverId), 30000);
-    } else {
-        clearInterval(intervalId);
+        sendLocation(driverId);
     }
 }
 
@@ -54,23 +51,24 @@ function sendStatusUpdate(driverId, status) {
 function sendLocation(driverId) {
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(position => {
-            // Enviar ubicación cada vez que se actualiza
-            fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    driverId,
-                    status: currentStatus,
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                })
-            });
+            // Guardamos la ubicación en la cola para enviarla cuando la red esté disponible
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.active.postMessage({
+                        type: 'send-location',
+                        driverId,
+                        status: currentStatus,
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                });
+            }
         }, (error) => {
             console.error("Error al obtener la ubicación: ", error);
         }, {
             enableHighAccuracy: true,
-            timeout: 30000,  // Si no se obtiene la ubicación en 30 segundos, da un error
-            maximumAge: 60000  // Utiliza una ubicación almacenada en caché durante 1 minuto
+            timeout: 30000,
+            maximumAge: 60000
         });
     } else {
         console.log("Geolocalización no soportada en este navegador");
@@ -118,3 +116,4 @@ function assignTrip(driverId) {
         setDriverStatus("En viaje");
     }
 }
+
