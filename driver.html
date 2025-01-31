@@ -10,9 +10,11 @@
     <div class="container">
         <h1>Panel del Conductor</h1>
         <input type="text" id="driverId" placeholder="Ingrese su ID">
-        <button onclick="setDriverStatus('Activo')">Activo</button>
-        <button onclick="setDriverStatus('Inactivo')">Inactivo</button>
-        <button onclick="setDriverStatus('Viaje Finalizado')">Viaje Finalizado</button>
+        <button id="activoBtn" onclick="setDriverStatus('Activo')">Activo</button>
+        <button id="inactivoBtn" onclick="setDriverStatus('Inactivo')">Inactivo</button>
+        <button id="viajeBtn" onclick="setDriverStatus('En viaje')">En viaje</button>
+        
+        <div id="status" class="status">Estado: Inactivo</div>
     </div>
     <script src="driver.js"></script>
 </body>
