@@ -1,6 +1,6 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
 let intervalId = null;
-let currentStatus = "Inactivo"; // Estado inicial
+let currentStatus = "Inactivo";
 
 function setDriverStatus(status) {
     const driverId = document.getElementById('driverId').value;
@@ -9,30 +9,26 @@ function setDriverStatus(status) {
         return;
     }
 
-    // Cambiar el estado visual y actualizar la variable de estado
-    updateStatus(status);
+    if (status === "Activo") {
+        document.getElementById('activeBtn').disabled = true;
+        document.getElementById('inactiveBtn').disabled = false;
+    } 
+    if (status === "Inactivo") {
+        document.getElementById('inactiveBtn').disabled = true;
+        document.getElementById('activeBtn').disabled = false;
+        document.getElementById('tripEndBtn').disabled = true;
+    } 
+    if (status === "Viaje Finalizado") {
+        status = "Inactivo";
+    }
 
-    // Enviar la actualización de estado al servidor
+    updateStatus(status);
     sendStatusUpdate(driverId, status);
 
     if (status === "Activo") {
-        // Si está activo, enviar ubicación cada 30 segundos
         intervalId = setInterval(() => sendLocation(driverId), 30000);
-        document.getElementById('activoBtn').disabled = true;
-        document.getElementById('inactivoBtn').disabled = false;
-        document.getElementById('viajeBtn').disabled = false;
     } else {
-        // Si no está activo, detener el envío de ubicación
         clearInterval(intervalId);
-        document.getElementById('activoBtn').disabled = false;
-    }
-
-    if (status === "Inactivo") {
-        document.getElementById('inactivoBtn').disabled = true;
-    }
-
-    if (status === "En viaje") {
-        document.getElementById('viajeBtn').disabled = true;
     }
 }
 
@@ -63,20 +59,42 @@ function sendLocation(driverId) {
 
 function updateStatus(status) {
     currentStatus = status;
-    const statusElement = document.getElementById('status');
-    const activeBtn = document.getElementById('activoBtn');
-    const inactiveBtn = document.getElementById('inactivoBtn');
-    const viajeBtn = document.getElementById('viajeBtn');
+    const statusText = document.getElementById('statusText');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const activeBtn = document.getElementById('activeBtn');
+    const inactiveBtn = document.getElementById('inactiveBtn');
+    const tripEndBtn = document.getElementById('tripEndBtn');
 
-    // Cambiar el color de acuerdo al estado
     if (status === "Activo") {
-        statusElement.textContent = "Estado: Activo";
-        statusElement.style.backgroundColor = "green";
+        statusText.textContent = "Activo";
+        statusIndicator.style.backgroundColor = "green";
+        activeBtn.disabled = true;
+        inactiveBtn.disabled = false;
+        tripEndBtn.disabled = true;
     } else if (status === "Inactivo") {
-        statusElement.textContent = "Estado: Inactivo";
-        statusElement.style.backgroundColor = "gray";
+        statusText.textContent = "Inactivo";
+        statusIndicator.style.backgroundColor = "red";
+        activeBtn.disabled = false;
+        inactiveBtn.disabled = true;
+        tripEndBtn.disabled = true;
     } else if (status === "En viaje") {
-        statusElement.textContent = "Estado: En viaje";
-        statusElement.style.backgroundColor = "blue";
+        statusText.textContent = "En viaje";
+        statusIndicator.style.backgroundColor = "blue";
+        activeBtn.disabled = true;
+        inactiveBtn.disabled = true;
+        tripEndBtn.disabled = false;
+    } else if (status === "Viaje Finalizado") {
+        statusText.textContent = "Inactivo";
+        statusIndicator.style.backgroundColor = "red";
+        activeBtn.disabled = false;
+        inactiveBtn.disabled = true;
+        tripEndBtn.disabled = true;
+    }
+}
+
+// Simulación de asignación de viaje
+function assignTrip(driverId) {
+    if (document.getElementById('driverId').value === driverId) {
+        setDriverStatus("En viaje");
     }
 }
