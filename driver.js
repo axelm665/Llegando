@@ -1,11 +1,16 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
+let intervalId = null;
 let currentStatus = "Inactivo";
-let locationWorker = null;
 
+// Registrar el Service Worker si el navegador lo soporta
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log("Service Worker registrado", reg))
-        .catch(err => console.error("Error al registrar el Service Worker", err));
+    navigator.serviceWorker.register('/service-worker.js')
+        .then(registration => {
+            console.log('Service Worker registrado con éxito:', registration);
+        })
+        .catch(error => {
+            console.log('Error al registrar el Service Worker:', error);
+        });
 }
 
 function setDriverStatus(status) {
@@ -18,21 +23,24 @@ function setDriverStatus(status) {
     if (status === "Activo") {
         document.getElementById('activeBtn').disabled = true;
         document.getElementById('inactiveBtn').disabled = false;
-        startBackgroundTracking(driverId);
-    }
+    } 
     if (status === "Inactivo") {
         document.getElementById('inactiveBtn').disabled = true;
         document.getElementById('activeBtn').disabled = false;
         document.getElementById('tripEndBtn').disabled = true;
-        stopBackgroundTracking();
-    }
+    } 
     if (status === "Viaje Finalizado") {
         status = "Inactivo";
-        stopBackgroundTracking();
     }
 
     updateStatus(status);
     sendStatusUpdate(driverId, status);
+
+    if (status === "Activo") {
+        intervalId = setInterval(() => sendLocation(driverId), 30000);
+    } else {
+        clearInterval(intervalId);
+    }
 }
 
 function sendStatusUpdate(driverId, status) {
@@ -43,18 +51,29 @@ function sendStatusUpdate(driverId, status) {
     });
 }
 
-function startBackgroundTracking(driverId) {
-    if (window.Worker) {
-        locationWorker = new Worker('location-worker.js');
-        locationWorker.postMessage({ command: "startTracking", driverId: driverId });
-    }
-}
-
-function stopBackgroundTracking() {
-    if (locationWorker) {
-        locationWorker.postMessage({ command: "stopTracking" });
-        locationWorker.terminate();
-        locationWorker = null;
+function sendLocation(driverId) {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(position => {
+            // Enviar ubicación cada vez que se actualiza
+            fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    driverId,
+                    status: currentStatus,
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                })
+            });
+        }, (error) => {
+            console.error("Error al obtener la ubicación: ", error);
+        }, {
+            enableHighAccuracy: true,
+            timeout: 30000,  // Si no se obtiene la ubicación en 30 segundos, da un error
+            maximumAge: 60000  // Utiliza una ubicación almacenada en caché durante 1 minuto
+        });
+    } else {
+        console.log("Geolocalización no soportada en este navegador");
     }
 }
 
@@ -90,5 +109,12 @@ function updateStatus(status) {
         activeBtn.disabled = false;
         inactiveBtn.disabled = true;
         tripEndBtn.disabled = true;
+    }
+}
+
+// Simulación de asignación de viaje
+function assignTrip(driverId) {
+    if (document.getElementById('driverId').value === driverId) {
+        setDriverStatus("En viaje");
     }
 }
