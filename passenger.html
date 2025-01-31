@@ -16,25 +16,11 @@
             gap: 10px;
             margin-bottom: 10px;
         }
-        #origin, #destination {
-            border: 2px solid;
-            padding-right: 30px; /* espacio para el botón X */
-        }
         #origin {
-            border-color: blue;
+            border: 2px solid blue;
         }
         #destination {
-            border-color: red;
-        }
-        .input-container input {
-            position: relative;
-        }
-        .clear-button {
-            position: absolute;
-            right: 5px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
+            border: 2px solid red;
         }
         .bottom-container {
             display: flex;
@@ -42,19 +28,25 @@
             justify-content: space-between;
             margin-top: 10px;
         }
+        .clear-btn {
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Solicitar Viaje</h1>
         <div class="input-container">
-            <div class="origin-container">
+            <div style="display: flex; align-items: center;">
                 <input id="origin" type="text" placeholder="🔵 Origen">
-                <span id="clearOrigin" class="clear-button" onclick="clearLocation('origin')">X</span>
+                <span class="clear-btn" id="clearOrigin"> (X) </span>
             </div>
-            <div class="destination-container">
+            <div style="display: flex; align-items: center;">
                 <input id="destination" type="text" placeholder="🔴 Destino">
-                <span id="clearDestination" class="clear-button" onclick="clearLocation('destination')">X</span>
+                <span class="clear-btn" id="clearDestination"> (X) </span>
             </div>
         </div>
 
@@ -223,23 +215,33 @@
                     calculateRoute();
                 }
             });
-        }
 
-        function clearLocation(type) {
-            if (type === 'origin') {
+            // Funcionalidad para borrar los marcadores y los campos
+            document.getElementById('clearOrigin').addEventListener('click', () => {
                 document.getElementById('origin').value = '';
                 if (originMarker) {
                     originMarker.setMap(null);
                     originMarker = null;
                 }
-            } else if (type === 'destination') {
+                directionsRenderer.setDirections({ routes: [] }); // Borrar el recorrido
+                document.getElementById('distance').textContent = '';
+                document.getElementById('fareAuto').textContent = '';
+                document.getElementById('fareMoto').textContent = '';
+                document.getElementById('confirmButton').disabled = true;
+            });
+
+            document.getElementById('clearDestination').addEventListener('click', () => {
                 document.getElementById('destination').value = '';
                 if (destinationMarker) {
                     destinationMarker.setMap(null);
                     destinationMarker = null;
                 }
-            }
-            document.getElementById('confirmButton').disabled = true;
+                directionsRenderer.setDirections({ routes: [] }); // Borrar el recorrido
+                document.getElementById('distance').textContent = '';
+                document.getElementById('fareAuto').textContent = '';
+                document.getElementById('fareMoto').textContent = '';
+                document.getElementById('confirmButton').disabled = true;
+            });
         }
 
         function confirmRide() {
