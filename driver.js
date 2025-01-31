@@ -1,6 +1,7 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
+let intervalId = null;
+let watchId = null;
 let currentStatus = "Inactivo";
-let locationInterval = null;
 
 function setDriverStatus(status) {
     const driverId = document.getElementById('driverId').value;
@@ -26,13 +27,9 @@ function setDriverStatus(status) {
     sendStatusUpdate(driverId, status);
 
     if (status === "Activo") {
-        // Activar intervalo de ubicación
-        if (locationInterval) {
-            clearInterval(locationInterval);
-        }
-        locationInterval = setInterval(() => sendLocation(driverId), 30000); // Cada 30 segundos
+        startLocationTracking(driverId);
     } else {
-        clearInterval(locationInterval);  // Detener el intervalo si el estado no es activo
+        stopLocationTracking();
     }
 }
 
@@ -44,9 +41,9 @@ function sendStatusUpdate(driverId, status) {
     });
 }
 
-function sendLocation(driverId) {
+function startLocationTracking(driverId) {
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
+        watchId = navigator.geolocation.watchPosition(position => {
             fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -57,15 +54,29 @@ function sendLocation(driverId) {
                     lng: position.coords.longitude
                 })
             });
-        }, (error) => {
-            console.error("Error al obtener la ubicación: ", error);
+        }, error => {
+            console.error("Error obteniendo la ubicación:", error);
         }, {
             enableHighAccuracy: true,
-            timeout: 30000,
-            maximumAge: 60000
+            maximumAge: 10000
         });
     }
 }
+
+function stopLocationTracking() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+}
+
+// Mantiene la ubicación activa aunque la pestaña esté en segundo plano
+document.addEventListener("visibilitychange", function () {
+    const driverId = document.getElementById('driverId').value;
+    if (document.visibilityState === "visible" && currentStatus === "Activo") {
+        startLocationTracking(driverId);
+    }
+});
 
 function updateStatus(status) {
     currentStatus = status;
