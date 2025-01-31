@@ -1,6 +1,11 @@
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
-let intervalId = null;
 let currentStatus = "Inactivo";
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log("Service Worker registrado", reg))
+        .catch(err => console.error("Error al registrar el Service Worker", err));
+}
 
 function setDriverStatus(status) {
     const driverId = document.getElementById('driverId').value;
@@ -12,24 +17,19 @@ function setDriverStatus(status) {
     if (status === "Activo") {
         document.getElementById('activeBtn').disabled = true;
         document.getElementById('inactiveBtn').disabled = false;
-    } 
+        trackLocation(driverId);
+    }
     if (status === "Inactivo") {
         document.getElementById('inactiveBtn').disabled = true;
         document.getElementById('activeBtn').disabled = false;
         document.getElementById('tripEndBtn').disabled = true;
-    } 
+    }
     if (status === "Viaje Finalizado") {
         status = "Inactivo";
     }
 
     updateStatus(status);
     sendStatusUpdate(driverId, status);
-
-    if (status === "Activo") {
-        intervalId = setInterval(() => sendLocation(driverId), 30000);
-    } else {
-        clearInterval(intervalId);
-    }
 }
 
 function sendStatusUpdate(driverId, status) {
@@ -40,19 +40,10 @@ function sendStatusUpdate(driverId, status) {
     });
 }
 
-function sendLocation(driverId) {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-            fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    driverId,
-                    status: currentStatus,
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                })
-            });
+function trackLocation(driverId) {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.sync.register('sendLocation');
         });
     }
 }
@@ -89,12 +80,5 @@ function updateStatus(status) {
         activeBtn.disabled = false;
         inactiveBtn.disabled = true;
         tripEndBtn.disabled = true;
-    }
-}
-
-// Simulación de asignación de viaje
-function assignTrip(driverId) {
-    if (document.getElementById('driverId').value === driverId) {
-        setDriverStatus("En viaje");
     }
 }
