@@ -3,7 +3,7 @@ let currentStatus = "Inactivo";
 
 // Registrar el Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('/service-worker.js')  // Asegúrate de que esta ruta sea correcta
         .then(registration => {
             console.log('Service Worker registrado con éxito:', registration);
         })
@@ -116,4 +116,3 @@ function assignTrip(driverId) {
         setDriverStatus("En viaje");
     }
 }
-
