@@ -16,12 +16,24 @@ self.addEventListener('sync', event => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    driverId: "UNKNOWN",
+                    driverId: "UNKNOWN",  // Aquí puedes almacenar el ID del conductor si es necesario
                     status: "Activo",
                     lat: 0, // Reemplazar con última ubicación conocida
-                    lng: 0
+                    lng: 0  // Reemplazar con última ubicación conocida
                 })
             }).catch(err => console.error('Sync de ubicación falló', err))
         );
+    }
+});
+
+// 🟢 Solicitar Wake Lock (mantiene el script activo)
+self.addEventListener('wakeLock', async () => {
+    if ('wakeLock' in navigator) {
+        try {
+            await navigator.wakeLock.request('screen');
+            console.log('Wake Lock activado');
+        } catch (err) {
+            console.error('Error al activar Wake Lock:', err);
+        }
     }
 });
