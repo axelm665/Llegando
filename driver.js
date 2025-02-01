@@ -4,7 +4,7 @@ let currentStatus = "Inactivo";
 let driverId = "";
 let wakeLock = null;
 
-// Solicitar Wake Lock para evitar que el navegador pause el envío de ubicación
+// 🟢 Solicitar Wake Lock (mantiene el script activo)
 async function requestWakeLock() {
     if ('wakeLock' in navigator) {
         try {
@@ -16,14 +16,14 @@ async function requestWakeLock() {
     }
 }
 
-// Manejar pérdida del Wake Lock y reintentar activarlo
+// 🔵 Monitorear si la pestaña vuelve a estar activa y reactivar Wake Lock
 document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible" && wakeLock === null) {
         await requestWakeLock();
     }
 });
 
-// Iniciar envío de ubicación si el conductor está activo
+// 🚀 Activar estado de conductor
 function setDriverStatus(status) {
     driverId = document.getElementById('driverId').value;
     if (!driverId) {
@@ -51,7 +51,7 @@ function setDriverStatus(status) {
     sendStatusUpdate(status);
 }
 
-// Enviar actualización de estado
+// 🔥 Enviar actualización de estado
 function sendStatusUpdate(status) {
     fetch(WEBHOOK_URL, {
         method: "POST",
@@ -60,7 +60,7 @@ function sendStatusUpdate(status) {
     });
 }
 
-// Enviar ubicación del conductor
+// 🌍 Enviar ubicación del conductor
 function sendLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
@@ -74,18 +74,20 @@ function sendLocation() {
                     lng: position.coords.longitude
                 })
             }).catch(() => {
-                // Si falla, intenta sincronizar en segundo plano
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     navigator.serviceWorker.ready.then(reg => {
                         reg.sync.register('sync-location');
                     });
                 }
             });
+        }, error => console.error("Error obteniendo ubicación:", error), {
+            enableHighAccuracy: true,
+            maximumAge: 10000
         });
     }
 }
 
-// Iniciar envío de ubicación cada 30s
+// ⏳ Iniciar envío de ubicación cada 30s
 function startLocationUpdates() {
     if (!intervalId) {
         sendLocation(); // Enviar inmediatamente
@@ -93,7 +95,7 @@ function startLocationUpdates() {
     }
 }
 
-// Detener envío de ubicación
+// ⛔ Detener envío de ubicación
 function stopLocationUpdates() {
     if (intervalId) {
         clearInterval(intervalId);
@@ -107,7 +109,7 @@ function stopLocationUpdates() {
     }
 }
 
-// Manejar cierre de página y enviar estado "Desconectado"
+// 🚪 Detectar cierre de página y enviar "Desconectado"
 window.addEventListener("beforeunload", () => {
     if (driverId && currentStatus === "Activo") {
         navigator.sendBeacon(WEBHOOK_URL, JSON.stringify({
@@ -118,7 +120,7 @@ window.addEventListener("beforeunload", () => {
     stopLocationUpdates();
 });
 
-// Actualizar interfaz según estado
+// 🟡 Actualizar UI según estado
 function updateStatus(status) {
     currentStatus = status;
     const statusText = document.getElementById('statusText');
@@ -154,18 +156,11 @@ function updateStatus(status) {
     }
 }
 
-// Asignar viaje al conductor
-function assignTrip(driverIdParam) {
-    if (document.getElementById('driverId').value === driverIdParam) {
-        setDriverStatus("En viaje");
-    }
-}
-
-// Registrar Service Worker para sincronización en segundo plano
+// 🔥 Registrar Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/Llegando/service-worker.js')
-        .then(registration => {
-            console.log('Service Worker registrado con éxito:', registration.scope);
+    navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => {
+            console.log('Service Worker registrado:', reg.scope);
         })
         .catch(error => {
             console.log('Error al registrar Service Worker:', error);
