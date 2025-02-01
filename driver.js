@@ -158,7 +158,7 @@ function updateStatus(status) {
 
 // 🔥 Registrar Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('/Llegando/service-worker.js')
         .then(reg => {
             console.log('Service Worker registrado con éxito:', reg);
         })
