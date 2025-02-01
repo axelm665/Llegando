@@ -1,7 +1,21 @@
+// driver.js
 const WEBHOOK_URL = "https://hook.us2.make.com/tk84jh72enqpukn9tkaa6ykohgjaojry";
 let intervalId = null;
-let watchId = null;
 let currentStatus = "Inactivo";
+let wakeLock = null;
+
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock liberado');
+            });
+        } catch (err) {
+            console.error(`Error en wakeLock: ${err.name}, ${err.message}`);
+        }
+    }
+}
 
 function setDriverStatus(status) {
     const driverId = document.getElementById('driverId').value;
@@ -13,11 +27,13 @@ function setDriverStatus(status) {
     if (status === "Activo") {
         document.getElementById('activeBtn').disabled = true;
         document.getElementById('inactiveBtn').disabled = false;
+        requestWakeLock();
     } 
     if (status === "Inactivo") {
         document.getElementById('inactiveBtn').disabled = true;
         document.getElementById('activeBtn').disabled = false;
         document.getElementById('tripEndBtn').disabled = true;
+        if (wakeLock) wakeLock.release();
     } 
     if (status === "Viaje Finalizado") {
         status = "Inactivo";
@@ -27,9 +43,9 @@ function setDriverStatus(status) {
     sendStatusUpdate(driverId, status);
 
     if (status === "Activo") {
-        startLocationTracking(driverId);
+        startBackgroundTracking(driverId);
     } else {
-        stopLocationTracking();
+        stopBackgroundTracking();
     }
 }
 
@@ -41,9 +57,9 @@ function sendStatusUpdate(driverId, status) {
     });
 }
 
-function startLocationTracking(driverId) {
+function sendLocation(driverId) {
     if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(position => {
+        navigator.geolocation.getCurrentPosition(position => {
             fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -54,68 +70,37 @@ function startLocationTracking(driverId) {
                     lng: position.coords.longitude
                 })
             });
-        }, error => {
-            console.error("Error obteniendo la ubicación:", error);
-        }, {
-            enableHighAccuracy: true,
-            maximumAge: 10000
         });
     }
 }
 
-function stopLocationTracking() {
-    if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-    }
-}
-
-// Mantiene la ubicación activa aunque la pestaña esté en segundo plano
-document.addEventListener("visibilitychange", function () {
-    const driverId = document.getElementById('driverId').value;
-    if (document.visibilityState === "visible" && currentStatus === "Activo") {
-        startLocationTracking(driverId);
-    }
-});
-
 function updateStatus(status) {
     currentStatus = status;
-    const statusText = document.getElementById('statusText');
-    const statusIndicator = document.getElementById('statusIndicator');
-    const activeBtn = document.getElementById('activeBtn');
-    const inactiveBtn = document.getElementById('inactiveBtn');
-    const tripEndBtn = document.getElementById('tripEndBtn');
+    document.getElementById('statusText').textContent = status;
+    document.getElementById('statusIndicator').style.backgroundColor =
+        status === "Activo" ? "green" : status === "En viaje" ? "blue" : "red";
+}
 
-    if (status === "Activo") {
-        statusText.textContent = "Activo";
-        statusIndicator.style.backgroundColor = "green";
-        activeBtn.disabled = true;
-        inactiveBtn.disabled = false;
-        tripEndBtn.disabled = true;
-    } else if (status === "Inactivo") {
-        statusText.textContent = "Inactivo";
-        statusIndicator.style.backgroundColor = "red";
-        activeBtn.disabled = false;
-        inactiveBtn.disabled = true;
-        tripEndBtn.disabled = true;
-    } else if (status === "En viaje") {
-        statusText.textContent = "En viaje";
-        statusIndicator.style.backgroundColor = "blue";
-        activeBtn.disabled = true;
-        inactiveBtn.disabled = true;
-        tripEndBtn.disabled = false;
-    } else if (status === "Viaje Finalizado") {
-        statusText.textContent = "Inactivo";
-        statusIndicator.style.backgroundColor = "red";
-        activeBtn.disabled = false;
-        inactiveBtn.disabled = true;
-        tripEndBtn.disabled = true;
+function startBackgroundTracking(driverId) {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(registration => {
+                registration.active?.postMessage({ driverId, action: 'start' });
+            });
     }
 }
 
-// Simulación de asignación de viaje
-function assignTrip(driverId) {
-    if (document.getElementById('driverId').value === driverId) {
-        setDriverStatus("En viaje");
+function stopBackgroundTracking() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration()
+            .then(registration => {
+                registration?.active?.postMessage({ action: 'stop' });
+            });
     }
 }
+
+navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'location') {
+        sendLocation(event.data.driverId);
+    }
+});
