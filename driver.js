@@ -74,6 +74,8 @@ function sendLocation() {
                     lng: position.coords.longitude
                 })
             }).catch(() => {
+                // Si falla el envío, guardar la ubicación en IndexedDB
+                saveLocationOffline(driverId, currentStatus, position.coords.latitude, position.coords.longitude);
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     navigator.serviceWorker.ready.then(reg => {
                         reg.sync.register('sync-location');
@@ -156,11 +158,31 @@ function updateStatus(status) {
     }
 }
 
-// 🔥 Registrar Service Worker
+// 🔥 Guardar ubicación cuando no se puede enviar
+function saveLocationOffline(driverId, status, lat, lng) {
+    if (!('indexedDB' in window)) return;
+
+    const request = indexedDB.open('locationDB', 1);
+    request.onupgradeneeded = event => {
+        let db = event.target.result;
+        if (!db.objectStoreNames.contains('locations')) {
+            db.createObjectStore('locations', { keyPath: 'id', autoIncrement: true });
+        }
+    };
+
+    request.onsuccess = event => {
+        let db = event.target.result;
+        let transaction = db.transaction('locations', 'readwrite');
+        let store = transaction.objectStore('locations');
+        store.add({ driverId, status, lat, lng, timestamp: Date.now() });
+    };
+}
+
+// 🟡 Registrar Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/Llegando/service-worker.js')
         .then(reg => {
-            console.log('Service Worker registrado con éxito:', reg);
+            console.log('Service Worker registrado:', reg.scope);
         })
         .catch(error => {
             console.log('Error al registrar Service Worker:', error);
