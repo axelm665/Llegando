@@ -4,7 +4,7 @@ let currentStatus = "Inactivo";
 let driverId = "";
 let wakeLock = null;
 
-// 🟢 Solicitar Wake Lock (mantiene el script activo)
+// 🟢 Activar Wake Lock para mantener la pantalla activa
 async function requestWakeLock() {
     if ('wakeLock' in navigator) {
         try {
@@ -16,7 +16,7 @@ async function requestWakeLock() {
     }
 }
 
-// 🔵 Monitorear si la pestaña vuelve a estar activa y reactivar Wake Lock
+// 🔵 Detectar si la pestaña vuelve a estar activa y reactivar Wake Lock
 document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible" && wakeLock === null) {
         await requestWakeLock();
@@ -60,29 +60,27 @@ function sendStatusUpdate(status) {
     });
 }
 
-// 🌍 Enviar ubicación del conductor
+// 🌍 Enviar ubicación del conductor con timestamp único
 function sendLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
-            const timestamp = new Date().toLocaleString("en-US", {
-                timeZone: "America/Argentina/Buenos_Aires", // Usar la zona horaria de Argentina
-                hour12: false
-            }); // Obtener el timestamp en formato ART
+            const timestamp = new Date().toISOString(); // Almacenamos en formato UTC
 
-            // Enviar ubicación junto con el timestamp al Webhook
+            const locationData = {
+                driverId,
+                status: currentStatus,
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                timestamp // Se guarda el timestamp único en cada registro
+            };
+
             fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    driverId,
-                    status: currentStatus,
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    timestamp // Incluir el timestamp
-                })
+                body: JSON.stringify(locationData)
             }).catch(() => {
                 // Si falla el envío, guardar la ubicación en IndexedDB
-                saveLocationOffline(driverId, currentStatus, position.coords.latitude, position.coords.longitude, timestamp);
+                saveLocationOffline(locationData);
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     navigator.serviceWorker.ready.then(reg => {
                         reg.sync.register('sync-location');
@@ -118,55 +116,8 @@ function stopLocationUpdates() {
     }
 }
 
-// 🚪 Detectar cierre de página y enviar "Desconectado"
-window.addEventListener("beforeunload", () => {
-    if (driverId && currentStatus === "Activo") {
-        navigator.sendBeacon(WEBHOOK_URL, JSON.stringify({
-            driverId,
-            status: "Desconectado"
-        }));
-    }
-    stopLocationUpdates();
-});
-
-// 🟡 Actualizar UI según estado
-function updateStatus(status) {
-    currentStatus = status;
-    const statusText = document.getElementById('statusText');
-    const statusIndicator = document.getElementById('statusIndicator');
-    const activeBtn = document.getElementById('activeBtn');
-    const inactiveBtn = document.getElementById('inactiveBtn');
-    const tripEndBtn = document.getElementById('tripEndBtn');
-
-    if (status === "Activo") {
-        statusText.textContent = "Activo";
-        statusIndicator.style.backgroundColor = "green";
-        activeBtn.disabled = true;
-        inactiveBtn.disabled = false;
-        tripEndBtn.disabled = true;
-    } else if (status === "Inactivo") {
-        statusText.textContent = "Inactivo";
-        statusIndicator.style.backgroundColor = "red";
-        activeBtn.disabled = false;
-        inactiveBtn.disabled = true;
-        tripEndBtn.disabled = true;
-    } else if (status === "En viaje") {
-        statusText.textContent = "En viaje";
-        statusIndicator.style.backgroundColor = "blue";
-        activeBtn.disabled = true;
-        inactiveBtn.disabled = true;
-        tripEndBtn.disabled = false;
-    } else if (status === "Viaje Finalizado") {
-        statusText.textContent = "Inactivo";
-        statusIndicator.style.backgroundColor = "red";
-        activeBtn.disabled = false;
-        inactiveBtn.disabled = true;
-        tripEndBtn.disabled = true;
-    }
-}
-
 // 🔥 Guardar ubicación cuando no se puede enviar
-function saveLocationOffline(driverId, status, lat, lng, timestamp) {
+function saveLocationOffline(locationData) {
     if (!('indexedDB' in window)) return;
 
     const request = indexedDB.open('locationDB', 1);
@@ -181,7 +132,7 @@ function saveLocationOffline(driverId, status, lat, lng, timestamp) {
         let db = event.target.result;
         let transaction = db.transaction('locations', 'readwrite');
         let store = transaction.objectStore('locations');
-        store.add({ driverId, status, lat, lng, timestamp }); // Guardar también el timestamp
+        store.add(locationData); // Guardamos la ubicación con su timestamp original
     };
 }
 
