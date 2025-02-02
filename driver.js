@@ -4,7 +4,7 @@ let currentStatus = "Inactivo";
 let driverId = "";
 let wakeLock = null;
 
-// 🟢 Solicitar Wake Lock para mantener el proceso activo
+// 🟢 Solicitar Wake Lock para mantener activo el proceso en segundo plano
 async function requestWakeLock() {
     if ('wakeLock' in navigator) {
         try {
@@ -16,14 +16,14 @@ async function requestWakeLock() {
     }
 }
 
-// 🔵 Reactivar Wake Lock si la pestaña vuelve a estar visible
+// 🔵 Mantener Wake Lock si la pestaña vuelve a estar visible
 document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible" && wakeLock === null) {
         await requestWakeLock();
     }
 });
 
-// 🚀 Activar estado del conductor
+// 🚀 Activar estado de conductor
 function setDriverStatus(status) {
     driverId = document.getElementById('driverId').value;
     if (!driverId) {
@@ -43,11 +43,15 @@ function setDriverStatus(status) {
         stopLocationUpdates();
     }
 
+    if (status === "Viaje Finalizado") {
+        status = "Inactivo";
+    }
+
     updateStatus(status);
     sendStatusUpdate(status);
 }
 
-// 🔥 Enviar estado al webhook
+// 🔥 Enviar actualización de estado
 function sendStatusUpdate(status) {
     fetch(WEBHOOK_URL, {
         method: "POST",
@@ -56,29 +60,33 @@ function sendStatusUpdate(status) {
     });
 }
 
-// 🌍 Obtener y enviar ubicación
+// 🌍 Obtener y enviar ubicación con timestamp único
 function sendLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
             const timestamp = new Date().toLocaleString("en-US", {
                 timeZone: "America/Argentina/Buenos_Aires",
                 hour12: false
-            });
+            }); // Timestamp en zona horaria de Argentina
 
-            const data = {
+            const locationData = {
                 driverId,
                 status: currentStatus,
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
-                timestamp
+                timestamp // Timestamp único por ubicación
             };
 
+            // Intentar enviar la ubicación al webhook
             fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
+                body: JSON.stringify(locationData)
             }).catch(() => {
-                saveLocationOffline(data);
+                // Si el envío falla, guardar en IndexedDB
+                saveLocationOffline(locationData);
+
+                // Registrar el envío en segundo plano con Background Sync
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     navigator.serviceWorker.ready.then(reg => {
                         reg.sync.register('sync-location');
@@ -92,15 +100,15 @@ function sendLocation() {
     }
 }
 
-// ⏳ Iniciar envío cada 30 segundos
+// ⏳ Iniciar envío de ubicación cada 30s
 function startLocationUpdates() {
     if (!intervalId) {
-        sendLocation();
+        sendLocation(); // Enviar inmediatamente
         intervalId = setInterval(sendLocation, 30000);
     }
 }
 
-// ⛔ Detener envío
+// ⛔ Detener envío de ubicación
 function stopLocationUpdates() {
     if (intervalId) {
         clearInterval(intervalId);
@@ -114,8 +122,19 @@ function stopLocationUpdates() {
     }
 }
 
-// 🟡 Guardar ubicaciones en IndexedDB si no hay conexión
-function saveLocationOffline(data) {
+// 🚪 Enviar "Desconectado" antes de cerrar la página
+window.addEventListener("beforeunload", () => {
+    if (driverId && currentStatus === "Activo") {
+        navigator.sendBeacon(WEBHOOK_URL, JSON.stringify({
+            driverId,
+            status: "Desconectado"
+        }));
+    }
+    stopLocationUpdates();
+});
+
+// 🔥 Guardar ubicación en IndexedDB cuando el envío falla
+function saveLocationOffline(locationData) {
     if (!('indexedDB' in window)) return;
 
     const request = indexedDB.open('locationDB', 1);
@@ -130,13 +149,17 @@ function saveLocationOffline(data) {
         let db = event.target.result;
         let transaction = db.transaction('locations', 'readwrite');
         let store = transaction.objectStore('locations');
-        store.add(data);
+        store.add(locationData); // Guardar cada ubicación con su timestamp real
     };
 }
 
 // 🟡 Registrar Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/Llegando/service-worker.js')
-        .then(reg => console.log('Service Worker registrado:', reg.scope))
-        .catch(error => console.log('Error al registrar Service Worker:', error));
+        .then(reg => {
+            console.log('Service Worker registrado:', reg.scope);
+        })
+        .catch(error => {
+            console.log('Error al registrar Service Worker:', error);
+        });
 }
