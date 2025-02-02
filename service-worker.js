@@ -8,7 +8,7 @@ self.addEventListener('activate', event => {
     event.waitUntil(self.clients.claim());
 });
 
-// 🔄 Obtener ubicaciones guardadas sin modificar timestamps
+// 🔄 Obtener ubicaciones guardadas en IndexedDB
 async function getSavedLocations() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('locationDB', 1);
@@ -24,7 +24,7 @@ async function getSavedLocations() {
     });
 }
 
-// 🔄 Enviar ubicaciones guardadas cuando haya conexión
+// 🔥 Enviar ubicaciones en segundo plano
 self.addEventListener('sync', async event => {
     if (event.tag === 'sync-location') {
         event.waitUntil(
@@ -40,27 +40,6 @@ self.addEventListener('sync', async event => {
                     });
                 }));
             }).catch(err => console.error('Fallo en sync-location', err))
-        );
-    }
-});
-
-// 🔄 Periodic Background Sync (Solo en Chrome)
-self.addEventListener('periodicsync', async event => {
-    if (event.tag === 'sync-location-periodically') {
-        console.log('Periodic Background Sync activado');
-        event.waitUntil(
-            getSavedLocations().then(locations => {
-                return Promise.all(locations.map(location => {
-                    return fetch(WEBHOOK_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(location)
-                    }).then(response => {
-                        if (!response.ok) throw new Error('Error al enviar ubicación');
-                        console.log('Ubicación enviada en periodic sync:', location);
-                    });
-                }));
-            }).catch(err => console.error('Fallo en periodic sync-location', err))
         );
     }
 });
