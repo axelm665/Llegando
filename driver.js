@@ -66,6 +66,7 @@ function sendLocation() {
         navigator.geolocation.getCurrentPosition(position => {
             const timestamp = new Date().toISOString(); // Obtener el timestamp
 
+            // Enviar ubicación junto con el timestamp al Webhook
             fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -74,7 +75,7 @@ function sendLocation() {
                     status: currentStatus,
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
-                    timestamp // Agregar el timestamp
+                    timestamp // Incluir el timestamp
                 })
             }).catch(() => {
                 // Si falla el envío, guardar la ubicación en IndexedDB
