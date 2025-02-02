@@ -9,31 +9,38 @@ self.addEventListener('activate', event => {
 });
 
 // 🔄 Reintentar ubicación en segundo plano si hay fallo de red
-self.addEventListener('sync', event => {
+async function getSavedLocations() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('locationDB', 1);
+        request.onsuccess = event => {
+            let db = event.target.result;
+            let transaction = db.transaction('locations', 'readonly');
+            let store = transaction.objectStore('locations');
+            let getAllRequest = store.getAll();
+            getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+            getAllRequest.onerror = reject;
+        };
+        request.onerror = reject;
+    });
+}
+
+self.addEventListener('sync', async event => {
     if (event.tag === 'sync-location') {
         event.waitUntil(
-            fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    driverId: "UNKNOWN",  // Aquí puedes almacenar el ID del conductor si es necesario
-                    status: "Activo",
-                    lat: 0, // Reemplazar con última ubicación conocida
-                    lng: 0  // Reemplazar con última ubicación conocida
-                })
-            }).catch(err => console.error('Sync de ubicación falló', err))
+            getSavedLocations().then(locations => {
+                return Promise.all(locations.map(location => {
+                    return fetch(WEBHOOK_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(location)
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al enviar ubicación');
+                        }
+                        console.log('Ubicación enviada en sync:', location);
+                    });
+                }));
+            }).catch(err => console.error('Fallo en sync-location', err))
         );
-    }
-});
-
-// 🟢 Solicitar Wake Lock (mantiene el script activo)
-self.addEventListener('wakeLock', async () => {
-    if ('wakeLock' in navigator) {
-        try {
-            await navigator.wakeLock.request('screen');
-            console.log('Wake Lock activado');
-        } catch (err) {
-            console.error('Error al activar Wake Lock:', err);
-        }
     }
 });
