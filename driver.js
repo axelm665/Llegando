@@ -64,6 +64,8 @@ function sendStatusUpdate(status) {
 function sendLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
+            const timestamp = new Date().toISOString(); // Obtener el timestamp
+
             fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -71,11 +73,12 @@ function sendLocation() {
                     driverId,
                     status: currentStatus,
                     lat: position.coords.latitude,
-                    lng: position.coords.longitude
+                    lng: position.coords.longitude,
+                    timestamp // Agregar el timestamp
                 })
             }).catch(() => {
                 // Si falla el envío, guardar la ubicación en IndexedDB
-                saveLocationOffline(driverId, currentStatus, position.coords.latitude, position.coords.longitude);
+                saveLocationOffline(driverId, currentStatus, position.coords.latitude, position.coords.longitude, timestamp);
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     navigator.serviceWorker.ready.then(reg => {
                         reg.sync.register('sync-location');
@@ -159,7 +162,7 @@ function updateStatus(status) {
 }
 
 // 🔥 Guardar ubicación cuando no se puede enviar
-function saveLocationOffline(driverId, status, lat, lng) {
+function saveLocationOffline(driverId, status, lat, lng, timestamp) {
     if (!('indexedDB' in window)) return;
 
     const request = indexedDB.open('locationDB', 1);
@@ -174,7 +177,7 @@ function saveLocationOffline(driverId, status, lat, lng) {
         let db = event.target.result;
         let transaction = db.transaction('locations', 'readwrite');
         let store = transaction.objectStore('locations');
-        store.add({ driverId, status, lat, lng, timestamp: Date.now() });
+        store.add({ driverId, status, lat, lng, timestamp }); // Guardar también el timestamp
     };
 }
 
