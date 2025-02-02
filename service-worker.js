@@ -8,7 +8,7 @@ self.addEventListener('activate', event => {
     event.waitUntil(self.clients.claim());
 });
 
-// 🔄 Obtener ubicaciones guardadas en IndexedDB
+// 🔄 Reintentar ubicación en segundo plano si hay fallo de red
 async function getSavedLocations() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('locationDB', 1);
@@ -24,7 +24,6 @@ async function getSavedLocations() {
     });
 }
 
-// 🔄 Sincronizar ubicaciones en segundo plano
 self.addEventListener('sync', async event => {
     if (event.tag === 'sync-location') {
         event.waitUntil(
@@ -33,7 +32,7 @@ self.addEventListener('sync', async event => {
                     return fetch(WEBHOOK_URL, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(location)
+                        body: JSON.stringify(location) // Enviar la ubicación con el timestamp
                     }).then(response => {
                         if (!response.ok) {
                             throw new Error('Error al enviar ubicación');
@@ -42,23 +41,6 @@ self.addEventListener('sync', async event => {
                     });
                 }));
             }).catch(err => console.error('Fallo en sync-location', err))
-        );
-    }
-});
-
-// ⏳ Periodic Background Sync (si el navegador lo soporta)
-self.addEventListener('periodicsync', event => {
-    if (event.tag === 'sync-location-periodic') {
-        event.waitUntil(
-            getSavedLocations().then(locations => {
-                return Promise.all(locations.map(location => {
-                    return fetch(WEBHOOK_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(location)
-                    });
-                }));
-            }).catch(err => console.error('Error en periodic sync:', err))
         );
     }
 });
