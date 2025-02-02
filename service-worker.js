@@ -32,7 +32,7 @@ self.addEventListener('sync', async event => {
                     return fetch(WEBHOOK_URL, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(location)
+                        body: JSON.stringify(location) // Enviar la ubicación con el timestamp
                     }).then(response => {
                         if (!response.ok) {
                             throw new Error('Error al enviar ubicación');
