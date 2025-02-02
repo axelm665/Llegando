@@ -3,6 +3,7 @@ let intervalId = null;
 let currentStatus = "Inactivo";
 let driverId = "";
 let wakeLock = null;
+let locationWorker = null;
 
 // 🟢 Solicitar Wake Lock (mantiene el script activo)
 async function requestWakeLock() {
@@ -60,55 +61,20 @@ function sendStatusUpdate(status) {
     });
 }
 
-// 🌍 Enviar ubicación del conductor
-function sendLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-            const timestamp = new Date().toLocaleString("en-US", {
-                timeZone: "America/Argentina/Buenos_Aires", // Usar la zona horaria de Argentina
-                hour12: false
-            }); // Obtener el timestamp en formato ART
-
-            // Enviar ubicación junto con el timestamp al Webhook
-            fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    driverId,
-                    status: currentStatus,
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    timestamp // Incluir el timestamp
-                })
-            }).catch(() => {
-                // Si falla el envío, guardar la ubicación en IndexedDB
-                saveLocationOffline(driverId, currentStatus, position.coords.latitude, position.coords.longitude, timestamp);
-                if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                    navigator.serviceWorker.ready.then(reg => {
-                        reg.sync.register('sync-location');
-                    });
-                }
-            });
-        }, error => console.error("Error obteniendo ubicación:", error), {
-            enableHighAccuracy: true,
-            maximumAge: 10000
-        });
-    }
-}
-
-// ⏳ Iniciar envío de ubicación cada 30s
+// 🌍 Iniciar envío de ubicación en segundo plano
 function startLocationUpdates() {
-    if (!intervalId) {
-        sendLocation(); // Enviar inmediatamente
-        intervalId = setInterval(sendLocation, 30000);
+    if (locationWorker) {
+        locationWorker.terminate();
     }
+    locationWorker = new Worker('location-worker.js');
+    locationWorker.postMessage({ driverId, status: currentStatus, webhookUrl: WEBHOOK_URL });
 }
 
 // ⛔ Detener envío de ubicación
 function stopLocationUpdates() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+    if (locationWorker) {
+        locationWorker.terminate();
+        locationWorker = null;
     }
     if (wakeLock) {
         wakeLock.release().then(() => {
@@ -163,35 +129,4 @@ function updateStatus(status) {
         inactiveBtn.disabled = true;
         tripEndBtn.disabled = true;
     }
-}
-
-// 🔥 Guardar ubicación cuando no se puede enviar
-function saveLocationOffline(driverId, status, lat, lng, timestamp) {
-    if (!('indexedDB' in window)) return;
-
-    const request = indexedDB.open('locationDB', 1);
-    request.onupgradeneeded = event => {
-        let db = event.target.result;
-        if (!db.objectStoreNames.contains('locations')) {
-            db.createObjectStore('locations', { keyPath: 'id', autoIncrement: true });
-        }
-    };
-
-    request.onsuccess = event => {
-        let db = event.target.result;
-        let transaction = db.transaction('locations', 'readwrite');
-        let store = transaction.objectStore('locations');
-        store.add({ driverId, status, lat, lng, timestamp }); // Guardar también el timestamp
-    };
-}
-
-// 🟡 Registrar Service Worker
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/Llegando/service-worker.js')
-        .then(reg => {
-            console.log('Service Worker registrado:', reg.scope);
-        })
-        .catch(error => {
-            console.log('Error al registrar Service Worker:', error);
-        });
 }
