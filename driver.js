@@ -64,7 +64,10 @@ function sendStatusUpdate(status) {
 function sendLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(position => {
-            const timestamp = new Date().toISOString(); // Obtener el timestamp
+            const timestamp = new Date().toLocaleString("en-US", {
+                timeZone: "America/Argentina/Buenos_Aires", // Usar la zona horaria de Argentina
+                hour12: false
+            }); // Obtener el timestamp en formato ART
 
             // Enviar ubicación junto con el timestamp al Webhook
             fetch(WEBHOOK_URL, {
